@@ -7,7 +7,7 @@ from utils import OKX
 if __name__ == '__main__':
     try:
         session = OKX()
-        session.main()
+        session.add_addresses()
         logger.success("It's done!")
     except Exception as e:
         sys.exit(f"Unexpected error: {e}\n\n"

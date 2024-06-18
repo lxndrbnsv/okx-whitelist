@@ -220,7 +220,7 @@ class OKX:
             "https://www.okx.cab/ru/balance/withdrawal-address/eth/2"
         )
 
-    def main(self):
+    def add_addresses(self):
         """
         A method to perform a series of actions, including accessing a URL, performing a manual login, accessing specific links,
          filling addresses, and handling confirmations.
