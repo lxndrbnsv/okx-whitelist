@@ -20,6 +20,7 @@ from selenium.common.exceptions import (
     ElementClickInterceptedException,
     TimeoutException,
     StaleElementReferenceException,
+    NoSuchElementException,
 )
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
@@ -32,13 +33,20 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 from selenium import webdriver
 
+from selenium.webdriver.remote.webelement import WebElement
+
+
+from services.authenticator import OTP
+
+from config import Config as cfg
+
 
 class OKX:
     def __init__(self):
         self.okx_url_login = "https://www.okx.cab/ru/account/login"
         service = Service()
-        self.driver = webdriver.Chrome(service=service)
-        self.actions = ActionChains(self.driver)
+        self.browser = webdriver.Chrome(service=service)
+        self.actions = ActionChains(self.browser)
         self.keys = Keys()
         self.AMOUNT_WALLETS = 20  # There's a maximum of 20 wallets in one pack
         self._zero = 0
@@ -67,7 +75,7 @@ class OKX:
         """
         if up:
             y = -y
-        self.driver.execute_script(f"window.scrollBy({x}, {y})")
+        self.browser.execute_script(f"window.scrollBy({x}, {y})")
 
     def filling_addresses(self, wallets: list):
         """Select the network and fill in the addresses in the fields"""
@@ -89,7 +97,7 @@ class OKX:
                 )
                 element.click()
         time.sleep(0.3)
-        chains = self.driver.find_elements(
+        chains = self.browser.find_elements(
             By.CLASS_NAME, "balance_okui-select-item"
         )
         try:
@@ -103,14 +111,14 @@ class OKX:
 
         # click add wallet
         for i in range(0, len(wallets) - 1):
-            btn = self.driver.find_element(
+            btn = self.browser.find_element(
                 By.XPATH,
                 "/html/body/div[1]/div/div/div/div[2]/div/form/button/span",
             )
             if btn:
                 btn.click()
             else:
-                self.driver.find_element(
+                self.browser.find_element(
                     By.XPATH,
                     "/html/body/div[1]/div/div/div/div[2]/div/form/button",
                 ).click()
@@ -118,13 +126,13 @@ class OKX:
             time.sleep(0.5)
         delete_acc = []
 
-        input_forms = self.driver.find_elements(
+        input_forms = self.browser.find_elements(
             By.CLASS_NAME, "balance_okui-input-input"
         )
 
         input_forms = [
             i
-            for i in self.driver.find_elements(
+            for i in self.browser.find_elements(
                 By.CLASS_NAME, "balance_okui-input-input"
             )
             if "Адрес" in i.accessible_name
@@ -133,7 +141,6 @@ class OKX:
             wallets, input_forms, range(0, self.AMOUNT_WALLETS)
         ):
             try:  # TODO: try/except block for debugging. To be removed later.
-                print(form.accessible_name)
                 self._zero += 1
                 logger.info(
                     f"add : {wallet} [{self._zero}/{self._len_wallets}]"
@@ -147,14 +154,14 @@ class OKX:
                 traceback.print_exc()
 
         # filling a checkbox
-        self.driver.find_element(
+        self.browser.find_element(
             By.XPATH,
             "/html/body/div[1]/div/div/div/div[2]"
             "/div/form/div[3]/div/div/div/label/span[1]/input",
         ).click()
 
         # clicking a submit button
-        self.driver.find_element(
+        self.browser.find_element(
             By.XPATH,
             "/html/body/div[1]/div/div/div"
             "/div[2]/div/form/div[4]/div/div/div/button",
@@ -163,10 +170,10 @@ class OKX:
 
     def wait_an_element(self, by, element_selector: str, wait_time: int = 5):
         try:
-            WebDriverWait(self.driver, wait_time).until(
+            WebDriverWait(self.browser, wait_time).until(
                 ec.presence_of_element_located((by, element_selector))
             )
-            return self.driver.find_element(by, element_selector)
+            return self.browser.find_element(by, element_selector)
         except TimeoutException:
             logger.error(
                 f"Error while waiting for an element: {element_selector}"
@@ -206,7 +213,7 @@ class OKX:
                         time.sleep(5)
             if check:
                 break
-        code_forms = self.driver.find_elements(
+        code_forms = self.browser.find_elements(
             By.XPATH, "//input[@placeholder='Ввести код']"
         )
         code_forms[0].send_keys(code_email)
@@ -214,9 +221,9 @@ class OKX:
         totp = pyotp.TOTP(OKX_2FA)
         code_forms[1].send_keys(totp.now())
         time.sleep(0.3)
-        self.driver.find_elements(By.CLASS_NAME, "btn-content")[-1].click()
+        self.browser.find_elements(By.CLASS_NAME, "btn-content")[-1].click()
         time.sleep(2)
-        self.driver.get(
+        self.browser.get(
             "https://www.okx.cab/ru/balance/withdrawal-address/eth/2"
         )
 
@@ -225,11 +232,11 @@ class OKX:
         A method to perform a series of actions, including accessing a URL, performing a manual login, accessing specific links,
          filling addresses, and handling confirmations.
         """
-        self.driver.get(self.okx_url_login)
+        self.browser.get(self.okx_url_login)
         time.sleep(5)
         self.manual_login()
         time.sleep(5)
-        self.driver.get(links[token]["link"])
+        self.browser.get(links[token]["link"])
         time.sleep(5)
         for wallets in self.wallets_batches:
             while True:
@@ -237,7 +244,84 @@ class OKX:
                 self.confirmations()
                 break
 
-            self.driver.get(links[token]["link"])
+            self.browser.get(links[token]["link"])
             logger.info("Sleep for 60   sec.")
             time.sleep(60)
         print()
+
+    def confirm_modal(self) -> None:
+        dialog_container = self.wait_an_element(
+            by=By.CSS_SELECTOR,
+            element_selector="div[class="
+            "'okui-dialog-window okui-dialog-window-float']",
+        )
+        button = dialog_container.find_element(By.TAG_NAME, "button")
+        self.actions.click(button).perform()
+
+    def sa_deletion(self, settings_button: WebElement) -> None:
+        self.actions.move_to_element(settings_button).perform()
+
+        setup_item_box = self.wait_an_element(
+            by=By.CLASS_NAME, element_selector="subaccount-setup-item-box"
+        )
+        delete_button = setup_item_box.find_element(
+            By.CSS_SELECTOR, "div[class='setup-item text-red delete']"
+        )
+        self.actions.click(delete_button).perform()
+
+        modal = self.wait_an_element(
+            by=By.CLASS_NAME,
+            element_selector="okui-form-item-control-input-content",
+        )
+        input_box = modal.find_element(By.CLASS_NAME, "okui-input-box")
+
+        self.actions.click(input_box).perform()
+
+        input_area = input_box.find_element(By.CLASS_NAME, "okui-input-input")
+        otp = OTP().otp
+
+        input_area.send_keys(otp)
+        confirm_button = self.wait_an_element(
+            by=By.CSS_SELECTOR,
+            element_selector="button[class='okui-btn btn-sm "
+            "btn-fill-highlight dialog-btn double-btn']",
+        )
+        self.actions.click(confirm_button).perform()
+        time.sleep(5)
+        try:
+            # Error message indicates that okx does not accept the code.
+            # If the message is shown we use recursion.
+            self.browser.find_element(
+                By.CSS_SELECTOR,
+                "div[class='okui-form-item-control-explain-error']",
+            )
+
+            # Waiting for an otp to be renewed.
+            while otp == OTP().otp:
+                time.sleep(1)
+
+            self.sa_deletion(settings_button=settings_button)
+        except NoSuchElementException:
+            time.sleep(5)
+
+    def delete_subaccounts(self) -> None:
+        """Removing all subaccounts"""
+        # self.browser.get(self.okx_url_login)
+        # self.browser.get(
+        #     "https://www.okx.com/ru/account/login"
+        #     "?forward=/ru/account/sub-account"
+        # )
+        self.browser.get(cfg.SUB_ACCOUNTS_BASE_URL)
+        self.manual_login()
+
+        self.confirm_modal()
+
+        sub_account_container = self.wait_an_element(
+            by=By.CLASS_NAME, element_selector="sub-account-container"
+        )
+
+        settings_buttons = sub_account_container.find_elements(
+            By.CLASS_NAME, "subaccount-setup-popup-title"
+        )
+        for settings_button in settings_buttons:
+            self.sa_deletion(settings_button=settings_button)

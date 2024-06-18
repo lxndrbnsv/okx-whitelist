@@ -1,5 +1,10 @@
 # ================== Settings ==================
 
+# +++++++++++++++++++++++++++++++++++++++++++++
+# Do not add new constants outside the Config class
+# +++++++++++++++++++++++++++++++++++++++++++++
+
+
 chain = "Starknet"  # ERC20 | OKTC | Arbitrum One | zkSync Lite | zkSync Era | Optimism | Harmony | Starknet
 token = "ETH"  # ETH | ONE | CORE. To add other coins, you need to add them below in the links dictionary
 
@@ -26,3 +31,11 @@ links = {
 
 with open("wallets.txt", "r") as f:
     WALLETS = [row.strip() for row in f]
+
+
+class Config(object):
+    # New options to be added here.
+    SUB_ACCOUNTS_BASE_URL = (
+        "https://www.okx.com/ru/account/login?forward=/ru/account/sub-account"
+    )
+    OKX_2FA = ""

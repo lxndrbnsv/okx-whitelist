@@ -7,7 +7,8 @@ from utils import OKX
 if __name__ == '__main__':
     try:
         session = OKX()
-        session.add_addresses()
+        # session.add_addresses()
+        session.delete_subaccounts()
         logger.success("It's done!")
     except Exception as e:
         sys.exit(f"Unexpected error: {e}\n\n"
