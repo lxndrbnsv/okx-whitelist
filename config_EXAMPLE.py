@@ -10,15 +10,15 @@ IMAP_URL = "imap.gmail.com"
 
 links = {
     "ETH": {
-        "link": "https://www.okx.cab/ru/balance/withdrawal-address/eth/2",
+        "link": "https://www.okx.cab/ru/balance/withdrawal-add-address/eth/2",
         "token": "ETH",
     },  # it's for all the coins in the chains : ERC20 | OKTC | Arbitrum one | zkSync Lite | zkSync Era | Optimism | Starknet
     "ONE": {
-        "link": "https://www.okx.cab/ru/balance/withdrawal-address/one/1926",
+        "link": "https://www.okx.cab/ru/balance/withdrawal-add-address/one/1926",
         "token": "ONE",
     },  # it's for the ONE coin on the Harmony network
     "CORE": {
-        "link": "https://www.okx.cab/ru/balance/withdrawal-address/core/2806",
+        "link": "https://www.okx.cab/ru/balance/withdrawal-add-address/core/2806",
         "token": "CORE",
     },  # it's for the CORE coin on the CORE network
 }
