@@ -37,6 +37,8 @@ from selenium.webdriver.remote.webelement import WebElement
 
 
 from services.authenticator import OTP
+from services import random_string
+from services.user_data import create_json
 
 from config import Config as cfg
 
@@ -306,11 +308,6 @@ class OKX:
 
     def delete_subaccounts(self) -> None:
         """Removing all subaccounts"""
-        # self.browser.get(self.okx_url_login)
-        # self.browser.get(
-        #     "https://www.okx.com/ru/account/login"
-        #     "?forward=/ru/account/sub-account"
-        # )
         self.browser.get(cfg.SUB_ACCOUNTS_BASE_URL)
         self.manual_login()
 
@@ -325,3 +322,117 @@ class OKX:
         )
         for settings_button in settings_buttons:
             self.sa_deletion(settings_button=settings_button)
+
+    def insert_sa_code(self) -> None:
+        dialogue_window = self.wait_an_element(
+            By.CSS_SELECTOR,
+            "div[class='okui-dialog-window "
+            "okui-dialog-window-float bottom-align no-margin']",
+        )
+        input_area = dialogue_window.find_element(
+            By.CSS_SELECTOR, "input[placeholder='Ввести код']"
+        )
+        otp = OTP().otp
+        input_area.send_keys(otp)
+
+        submit_button = dialogue_window.find_element(
+            By.CSS_SELECTOR,
+            "button[class='okui-btn "
+            "btn-sm btn-fill-highlight dialog-btn double-btn']",
+        )
+        submit_button.click()
+
+        try:
+            dialogue_window.find_element(
+                By.CSS_SELECTOR,
+                "div[class='okui-form-item-control-explain-error']",
+            )
+
+            while otp == OTP().otp:
+                time.sleep(1)
+            self.insert_sa_code()
+        except NoSuchElementException:
+            pass
+
+    def add_subaccounts(self) -> None:
+        username = random_string(19)
+        self.browser.get(cfg.SUB_ACCOUNTS_BASE_URL)
+        self.manual_login()
+
+        self.confirm_modal()
+
+        sub_account_add_container = self.wait_an_element(
+            by=By.CLASS_NAME, element_selector="sub-account-add-container"
+        )
+
+        WebDriverWait(self.browser, 5).until(
+            ec.element_to_be_clickable(sub_account_add_container)
+        )
+
+        self.actions.move_to_element(sub_account_add_container).perform()
+        self.actions.click(sub_account_add_container).perform()
+
+        subaccount_data = []
+
+        for i in range(3):
+            if i == 0:
+                area_index = i
+            elif i == 1:
+                area_index = i * 2
+            else:
+                area_index = 4
+
+            sa_name = f"{username}{i+1}"
+
+            add_container_area = self.wait_an_element(
+                by=By.CLASS_NAME, element_selector="batch-add-container"
+            )
+
+            input_areas = add_container_area.find_elements(
+                By.CLASS_NAME, "okui-input-input"
+            )
+
+            input_area = input_areas[area_index]
+
+            input_area.send_keys(f"{username}{i+1}")
+
+            select_boxes = self.browser.find_elements(
+                By.CLASS_NAME, "okui-select"
+            )
+
+            select_box = select_boxes[i]
+
+            self.actions.click(select_box).perform()
+            select_container = self.browser.find_element(
+                By.CSS_SELECTOR,
+                "div[class='okui-select-item-container "
+                "okui-select-item-container-real']",
+            )
+            standard_variant = select_container.find_element(
+                By.CLASS_NAME, "okui-select-item"
+            )
+            self.actions.click(standard_variant).perform()
+
+            add_draft_button = self.browser.find_element(
+                By.CSS_SELECTOR,
+                "button[class='okui-btn btn-md btn-outline-secondary "
+                "index_action-btn__p8O5+ "
+                "index_create__N1l4i index_is-inline__s8XOi']",
+            )
+
+            if i != 2:
+                self.actions.click(add_draft_button).perform()
+            else:
+
+                save_button = self.wait_an_element(
+                    by=By.CSS_SELECTOR,
+                    element_selector="button[class='okui-btn btn-md "
+                    "btn-fill-highlight block index_action-btn__p8O5+']",
+                )
+
+                self.actions.move_to_element(save_button).perform()
+                self.actions.click(save_button).perform()
+                self.insert_sa_code()
+
+            subaccount_data.append(dict(name=sa_name, addr=[]))
+        create_json(subaccount_data, "subaccounts.json")

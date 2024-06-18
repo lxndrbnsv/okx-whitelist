@@ -8,7 +8,8 @@ if __name__ == '__main__':
     try:
         session = OKX()
         # session.add_addresses()
-        session.delete_subaccounts()
+        # session.delete_subaccounts()
+        session.add_subaccounts()
         logger.success("It's done!")
     except Exception as e:
         sys.exit(f"Unexpected error: {e}\n\n"
