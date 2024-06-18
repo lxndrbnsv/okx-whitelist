@@ -166,3 +166,4 @@ cython_debug/
 .DS_Store
 .vscode/launch.json
 downloaded_files/driver_fixing.lock
+.vscode/settings.json
