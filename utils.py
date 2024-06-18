@@ -38,7 +38,7 @@ from selenium.webdriver.remote.webelement import WebElement
 
 from services.authenticator import OTP
 from services import random_string
-from services.user_data import create_json
+from services.user_data import create_json, read_json
 
 from config import Config as cfg
 
@@ -413,6 +413,11 @@ class OKX:
             )
             self.actions.click(standard_variant).perform()
 
+            switch_button = add_container_area.find_elements(
+                By.CLASS_NAME, "okui-switch"
+            )[i]
+            self.actions.click(switch_button).perform()
+
             add_draft_button = self.browser.find_element(
                 By.CSS_SELECTOR,
                 "button[class='okui-btn btn-md btn-outline-secondary "
@@ -435,4 +440,35 @@ class OKX:
                 self.insert_sa_code()
 
             subaccount_data.append(dict(name=sa_name, addr=[]))
-        create_json(subaccount_data, "subaccounts.json")
+        create_json(subaccount_data, cfg.SUBACCOUNTS_JSON_PATH)
+
+    def add_deposit_wallets(self) -> None:
+        self.browser.get(self.okx_url_login)
+        self.manual_login()
+
+        accounts = read_json(path=cfg.SUBACCOUNTS_JSON_PATH)
+        for account in accounts:
+            account_name = account["name"]
+
+            user_info_button = self.wait_an_element(
+                by=By.CLASS_NAME, element_selector="user-info"
+            )
+
+            self.actions.move_to_element(user_info_button).perform()
+
+            change_account_button = self.browser.find_element(
+                By.ID, "tog-acc-btn"
+            )
+            change_account_button.click()
+            account_buttons = WebDriverWait(self.browser, 5).until(
+                ec.presence_of_all_elements_located(
+                    (By.CLASS_NAME, "toggle-info")
+                )
+            )
+            for button in account_buttons:
+                button_text = button.text
+                if account_name in button_text:
+                    self.actions.click(button).perform()
+                    continue
+
+            self.browser.refresh()
